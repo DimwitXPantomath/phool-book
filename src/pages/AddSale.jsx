@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 
 export default function AddSale() {
 
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [items, setItems] = useState([]);
   const [variants, setVariants] = useState([]);
   const [selectedItem, setSelectedItem] = useState("");
@@ -13,6 +14,44 @@ export default function AddSale() {
 
   const [paymentMode, setPaymentMode] = useState("cash");
   const [finalPrice, setFinalPrice] = useState("");
+
+  useEffect(() => {
+
+  const goOnline = () => setIsOnline(true);
+    const goOffline = () => setIsOnline(false);
+
+    window.addEventListener("online", goOnline);
+    window.addEventListener("offline", goOffline);
+
+    return () => {
+      window.removeEventListener("online", goOnline);
+      window.removeEventListener("offline", goOffline);
+    };
+
+  }, []);
+
+  if (!isOnline) {
+
+    const offlineSales =
+      JSON.parse(localStorage.getItem("offline_sales")) || [];
+
+    offlineSales.push({
+      cart,
+      cartTotal,
+      finalTotal,
+      paymentMode,
+      created_at: new Date()
+    });
+
+    localStorage.setItem("offline_sales", JSON.stringify(offlineSales));
+
+    alert("Saved Offline. Will sync later.");
+
+    setCart([]);
+    setFinalPrice("");
+
+    return;
+  }
 
   useEffect(() => {
     fetchItems();

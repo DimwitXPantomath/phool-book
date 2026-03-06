@@ -9,6 +9,49 @@ export default function Dashboard() {
   const [closingLoading, setClosingLoading] = useState(false);
 
   useEffect(() => {
+
+    const syncOfflineSales = async () => {
+
+      const offlineSales =
+        JSON.parse(localStorage.getItem("offline_sales")) || [];
+
+      if (offlineSales.length === 0) return;
+
+      for (const sale of offlineSales) {
+
+        const { data } = await supabase
+          .from("phoolbook_sales")
+          .insert([{
+            payment_mode: sale.paymentMode,
+            cart_total: sale.cartTotal,
+            final_total: sale.finalTotal
+          }])
+          .select();
+
+        const saleId = data[0].id;
+
+        const items = sale.cart.map(i => ({
+          sale_id: saleId,
+          variant_id: i.variant_id,
+          qty: i.qty,
+          price: i.price,
+          total: i.total
+        }));
+
+        await supabase
+          .from("phoolbook_sale_items")
+          .insert(items);
+      }
+
+      localStorage.removeItem("offline_sales");
+
+    };
+
+    if (navigator.onLine) syncOfflineSales();
+
+  }, []);
+
+  useEffect(() => {
     fetchTodayData();
   }, []);
 
@@ -89,9 +132,36 @@ export default function Dashboard() {
     }
   };
 
+  const sendWhatsappReport = () => {
+
+    const profit = salesTotal - expenseTotal;
+
+    const message = `
+  🌸 Nisha Florist Daily Report
+
+  Sales: ₹${salesTotal}
+  Expenses: ₹${expenseTotal}
+  Profit: ₹${profit}
+
+  Cash: ₹${cashTotal}
+  UPI: ₹${upiTotal}
+  `;
+
+    const encoded = encodeURIComponent(message);
+
+    const url =
+      `https://wa.me/?text=${encoded}`;
+
+    window.open(url, "_blank");
+
+  };
+
   return (
     <div style={container}>
       <h2>📊 Today Summary</h2>
+      <button style={whatsappBtn} onClick={sendWhatsappReport}>
+        📲 Send WhatsApp Report
+      </button>
 
       <div style={card}>💰 Sales: ₹{salesTotal}</div>
       <div style={card}>💸 Expenses: ₹{expenseTotal}</div>
@@ -122,4 +192,13 @@ const divider = {
   height: "1px",
   backgroundColor: "#ccc",
   margin: "10px 0",
+};
+
+const whatsappBtn = {
+  padding: "14px",
+  borderRadius: "10px",
+  border: "none",
+  background: "#25D366",
+  color: "white",
+  fontWeight: "bold"
 };
