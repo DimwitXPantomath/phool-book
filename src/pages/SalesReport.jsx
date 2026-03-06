@@ -1,5 +1,19 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie
+} from "recharts";
+
+import { Cell } from "recharts";
 
 export default function SalesReport() {
 
@@ -52,6 +66,44 @@ export default function SalesReport() {
     itemSummary[name].total += r.total;
   });
 
+  const salesPerDay = {};
+
+    data.forEach(r=>{
+    const date = new Date(r.phoolbook_sales.created_at)
+        .toLocaleDateString();
+
+    if(!salesPerDay[date]) salesPerDay[date] = 0;
+
+    salesPerDay[date] += r.total;
+    });
+
+    const salesPerDayData = Object.keys(salesPerDay).map(d=>({
+    date:d,
+    sales:salesPerDay[d]
+    }));
+
+    const flowerMap = {};
+
+    data.forEach(r=>{
+    const name = r.phoolbook_variants.variant_name;
+
+    if(!flowerMap[name]){
+        flowerMap[name] = 0;
+    }
+
+    flowerMap[name] += r.qty;
+    });
+
+    const flowerData = Object.keys(flowerMap).map(name=>({
+    name,
+    qty:flowerMap[name]
+    }));
+
+    const paymentData = [
+    {name:"Cash", value:cash},
+    {name:"UPI", value:upi}
+    ];
+
   return (
 
     <div style={container}>
@@ -83,55 +135,144 @@ export default function SalesReport() {
       {/* SUMMARY */}
 
       {tab==="summary" && (
-        <div style={grid}>
+        <>
 
-          <div style={card}>Sales ₹{totalSales}</div>
-          <div style={card}>Orders {orders}</div>
-          <div style={card}>Cash ₹{cash}</div>
-          <div style={card}>UPI ₹{upi}</div>
+        <div style={grid}>
+            <div style={card}>Sales ₹{totalSales}</div>
+            <div style={card}>Orders {orders}</div>
+            <div style={card}>Cash ₹{cash}</div>
+            <div style={card}>UPI ₹{upi}</div>
+        </div>
+
+        <h3 style={{marginTop:"20px"}}>📈 Sales Per Day</h3>
+
+        <div style={{width:"100%",height:250}}>
+
+            <ResponsiveContainer>
+
+            <LineChart data={salesPerDayData}>
+
+                <XAxis dataKey="date" />
+
+                <YAxis />
+
+                <Tooltip />
+
+                <Line
+                type="monotone"
+                dataKey="sales"
+                stroke="#000"
+                />
+
+            </LineChart>
+
+            </ResponsiveContainer>
 
         </div>
-      )}
+
+        </>
+        )}
 
       {/* ITEMS */}
 
       {tab==="items" && (
+        <>
 
-        <div>
+        <h3>🌸 Top Selling Flowers</h3>
 
-          {Object.keys(itemSummary).map(name=>(
-            <div key={name} style={row}>
+        <div style={{width:"100%",height:250}}>
 
-              <div>{name}</div>
-              <div>{itemSummary[name].qty} pcs</div>
-              <div>₹{itemSummary[name].total}</div>
+            <ResponsiveContainer>
 
-            </div>
-          ))}
+            <BarChart data={flowerData}>
+
+                <XAxis dataKey="name" />
+
+                <YAxis />
+
+                <Tooltip />
+
+                <Bar dataKey="qty" fill="#8884d8" />
+
+            </BarChart>
+
+            </ResponsiveContainer>
 
         </div>
 
-      )}
+        <h3 style={{marginTop:"20px"}}>Item Details</h3>
+
+        <div>
+
+            {Object.keys(itemSummary).map(name=>(
+            <div key={name} style={row}>
+                <div>{name}</div>
+                <div>{itemSummary[name].qty} pcs</div>
+                <div>₹{itemSummary[name].total}</div>
+            </div>
+            ))}
+
+        </div>
+
+        </>
+        )}
 
       {/* PAYMENT */}
 
       {tab==="payment" && (
+        <>
 
-        <div>
+        <h3>💵 Payment Split</h3>
 
-          <div style={row}>
-            <div>Cash</div>
-            <div>₹{cash}</div>
-          </div>
+        <div style={{width:"100%",height:250}}>
 
-          <div style={row}>
-            <div>UPI</div>
-            <div>₹{upi}</div>
-          </div>
+            <ResponsiveContainer>
+
+            <PieChart>
+
+                <Pie
+                data={paymentData}
+                dataKey="value"
+                nameKey="name"
+                outerRadius={80}
+                label
+                >
+
+                {paymentData.map((entry,index)=>(
+                    <Cell
+                    key={index}
+                    fill={index===0 ? "#00C49F" : "#0088FE"}
+                    />
+                ))}
+
+                </Pie>
+
+                <Tooltip />
+
+            </PieChart>
+
+            </ResponsiveContainer>
 
         </div>
 
-      )}
+        <h3 style={{marginTop:"20px"}}>Payment Details</h3>
+
+        <div>
+
+            <div style={row}>
+            <div>Cash</div>
+            <div>₹{cash}</div>
+            </div>
+
+            <div style={row}>
+            <div>UPI</div>
+            <div>₹{upi}</div>
+            </div>
+
+        </div>
+
+        </>
+        )}
 
       {/* TRANSACTIONS */}
 
