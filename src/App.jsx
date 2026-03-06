@@ -4,6 +4,7 @@ import AddItem from "./pages/AddItem";
 import AddVariant from "./pages/AddVariant";
 import AddSale from "./pages/AddSale";
 import AddExpense from "./pages/AddExpense";
+import SalesReport from "./pages/SalesReport";
 
 export default function App() {
   return (
@@ -34,6 +35,9 @@ export default function App() {
                   <Link style={secondaryButton} to="/add-variant">
                     🌹 Manage Variants
                   </Link>
+                  <Link style={secondaryButton} to="/report">
+                    📑 Sales Report
+                  </Link>
                 </div>
               </>
             }
@@ -42,6 +46,7 @@ export default function App() {
           <Route path="/add-item" element={<AddItem />} />
           <Route path="/add-variant" element={<AddVariant />} />
           <Route path="/add-expense" element={<AddExpense />} />
+          <Route path="/report" element={<SalesReport />} />
         </Routes>
 
       </div>
