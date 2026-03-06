@@ -1,97 +1,164 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 
-export default function AddVariant() {
-  const [items, setItems] = useState([]);
-  const [selectedItem, setSelectedItem] = useState("");
-  const [variantName, setVariantName] = useState("");
-  const [price, setPrice] = useState("");
-  const [loading, setLoading] = useState(false);
+export default function AddVariant(){
 
-  // Fetch items for dropdown
-  useEffect(() => {
+  const [items,setItems] = useState([]);
+  const [variants,setVariants] = useState([]);
+
+  const [itemId,setItemId] = useState("");
+  const [name,setName] = useState("");
+  const [price,setPrice] = useState("");
+
+  useEffect(()=>{
     fetchItems();
-  }, []);
+    fetchVariants();
+  },[]);
 
-  const fetchItems = async () => {
-    const { data, error } = await supabase
+  const fetchItems = async ()=>{
+
+    const { data } = await supabase
       .from("phoolbook_items")
       .select("*");
 
-    if (!error) {
-      setItems(data);
-    }
+    setItems(data || []);
   };
 
-  const handleAddVariant = async () => {
-    if (!selectedItem || !variantName || !price) {
+  const fetchVariants = async ()=>{
+
+    const { data } = await supabase
+      .from("phoolbook_variants")
+      .select(`
+        *,
+        phoolbook_items(name)
+      `);
+
+    setVariants(data || []);
+  };
+
+  const addVariant = async ()=>{
+
+    if(!itemId || !name || !price){
       alert("Fill all fields");
       return;
     }
 
-    setLoading(true);
-
     const { error } = await supabase
       .from("phoolbook_variants")
-      .insert([
-        {
-          item_id: selectedItem,
-          variant_name: variantName,
-          base_price: price,
-        },
-      ]);
+      .insert([{
+        item_id:itemId,
+        variant_name:name,
+        base_price:price
+      }]);
 
-    setLoading(false);
-
-    if (error) {
-      alert("Error: " + error.message);
-      console.log(error);
-    } else {
-      alert("Variant added successfully");
-      setVariantName("");
-      setPrice("");
+    if(error){
+      alert(error.message);
+      return;
     }
+
+    setName("");
+    setPrice("");
+
+    fetchVariants();
   };
 
-  return (
-    <div>
-      <h2>Add Variant</h2>
+  const deleteVariant = async (id)=>{
 
-      <select
-        value={selectedItem}
-        onChange={(e) => setSelectedItem(e.target.value)}
-      >
-        <option value="">Select Item</option>
-        {items.map((item) => (
+    const confirmDelete = window.confirm("Delete this variant?");
+
+    if(!confirmDelete) return;
+
+    await supabase
+      .from("phoolbook_variants")
+      .delete()
+      .eq("id",id);
+
+    fetchVariants();
+  };
+
+  return(
+
+    <div style={container}>
+
+      <h2>Manage Variants</h2>
+
+      <select style={input} onChange={(e)=>setItemId(e.target.value)}>
+
+        <option>Select Item</option>
+
+        {items.map(item=>(
           <option key={item.id} value={item.id}>
             {item.name}
           </option>
         ))}
+
       </select>
 
-      <br /><br />
-
       <input
-        type="text"
-        placeholder="Rose / Marigold / Small"
-        value={variantName}
-        onChange={(e) => setVariantName(e.target.value)}
+        style={input}
+        placeholder="Variant Name"
+        value={name}
+        onChange={(e)=>setName(e.target.value)}
       />
 
-      <br /><br />
-
       <input
-        type="number"
-        placeholder="Base Price"
+        style={input}
+        placeholder="Price"
         value={price}
-        onChange={(e) => setPrice(e.target.value)}
+        onChange={(e)=>setPrice(e.target.value)}
       />
 
-      <br /><br />
-
-      <button onClick={handleAddVariant} disabled={loading}>
-        {loading ? "Saving..." : "Save Variant"}
+      <button style={btn} onClick={addVariant}>
+        Add Variant
       </button>
+
+      <h3>Existing Variants</h3>
+
+      {variants.map(v=>(
+        <div key={v.id} style={row}>
+
+          <div>
+            {v.phoolbook_items.name} — {v.variant_name} ₹{v.base_price}
+          </div>
+        </div>
+      ))}
+
     </div>
+
   );
 }
+
+const container={
+  display:"flex",
+  flexDirection:"column",
+  gap:"10px"
+};
+
+const input={
+  padding:"10px",
+  borderRadius:"6px",
+  border:"1px solid #ccc"
+};
+
+const btn={
+  padding:"10px",
+  borderRadius:"8px",
+  border:"none",
+  background:"#000",
+  color:"#fff"
+};
+
+const row={
+  display:"flex",
+  justifyContent:"space-between",
+  padding:"8px",
+  borderBottom:"1px solid #eee"
+};
+
+const deleteBtn={
+  border:"none",
+  background:"red",
+  color:"white",
+  borderRadius:"6px",
+  padding:"4px 8px"
+};
