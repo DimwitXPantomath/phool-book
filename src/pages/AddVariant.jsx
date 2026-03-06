@@ -3,9 +3,9 @@ import { supabase } from "../lib/supabase";
 
 export default function AddVariant(){
 
+  
   const [items,setItems] = useState([]);
   const [variants,setVariants] = useState([]);
-
   const [itemId,setItemId] = useState("");
   const [name,setName] = useState("");
   const [price,setPrice] = useState("");
@@ -24,14 +24,15 @@ export default function AddVariant(){
     setItems(data || []);
   };
 
-  const fetchVariants = async ()=>{
+  const fetchVariants = async (id)=>{
 
     const { data } = await supabase
       .from("phoolbook_variants")
       .select(`
         *,
         phoolbook_items(name)
-      `);
+      `)
+      .eq("item_id", id);
 
     setVariants(data || []);
   };
@@ -82,9 +83,17 @@ export default function AddVariant(){
 
       <h2>Manage Variants</h2>
 
-      <select style={input} onChange={(e)=>setItemId(e.target.value)}>
+      <select
+        style={input}
+        value={itemId}
+        onChange={(e)=>{
+          const id = e.target.value;
+          setItemId(id);
+          fetchVariants(id);
+        }}
+      >
 
-        <option>Select Item</option>
+        <option value="">Select Item</option>
 
         {items.map(item=>(
           <option key={item.id} value={item.id}>
