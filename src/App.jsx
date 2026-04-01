@@ -5,6 +5,24 @@ import AddVariant from "./pages/AddVariant";
 import AddSale from "./pages/AddSale";
 import AddExpense from "./pages/AddExpense";
 import SalesReport from "./pages/SalesReport";
+import { useEffect, useState } from "react";
+import { supabase } from "./lib/supabase";
+import Auth from "./pages/Auth";
+
+
+const [session,setSession] = useState(null);
+
+useEffect(()=>{
+
+  supabase.auth.getSession().then(({data})=>{
+    setSession(data.session);
+  });
+
+  supabase.auth.onAuthStateChange((_event,session)=>{
+    setSession(session);
+  });
+
+},[]);
 
 export default function App() {
   return (
@@ -13,7 +31,17 @@ export default function App() {
 
         <div style={headerBar}>
           <h1 style={businessName}>🌸 Nisha Florist</h1>
-          <span style={brandName}>Phool Book</span>
+
+          <div style={{display:"flex",gap:"10px",alignItems:"center"}}>
+            <span style={brandName}>Phool Book</span>
+
+            <button
+              onClick={()=>supabase.auth.signOut()}
+              style={logoutBtn}
+            >
+              Logout
+            </button>
+          </div>
         </div>
 
         <Routes>
@@ -99,4 +127,13 @@ const brandName = {
   fontSize: "12px",
   color: "gray",
   fontWeight: "bold",
+};
+
+const logoutBtn = {
+  padding: "6px 10px",
+  borderRadius: "6px",
+  border: "none",
+  background: "#000",
+  color: "#fff",
+  fontSize: "12px"
 };
