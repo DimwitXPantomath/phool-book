@@ -1,404 +1,252 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import { useAuth } from "../hooks/useAuth";
+import { showToast } from "../components/Toast";
 
 export default function AddSale() {
-
+  const { session } = useAuth();
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [items, setItems] = useState([]);
   const [variants, setVariants] = useState([]);
   const [selectedItem, setSelectedItem] = useState("");
   const [selectedVariant, setSelectedVariant] = useState(null);
-
   const [qty, setQty] = useState(1);
   const [cart, setCart] = useState([]);
-
   const [paymentMode, setPaymentMode] = useState("cash");
   const [finalPrice, setFinalPrice] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-
-  const goOnline = () => setIsOnline(true);
-    const goOffline = () => setIsOnline(false);
-
-    window.addEventListener("online", goOnline);
-    window.addEventListener("offline", goOffline);
-
-    return () => {
-      window.removeEventListener("online", goOnline);
-      window.removeEventListener("offline", goOffline);
-    };
-
+    const up = () => setIsOnline(true);
+    const down = () => setIsOnline(false);
+    window.addEventListener("online", up);
+    window.addEventListener("offline", down);
+    return () => { window.removeEventListener("online", up); window.removeEventListener("offline", down); };
   }, []);
-
-  if (!isOnline) {
-
-    const offlineSales =
-      JSON.parse(localStorage.getItem("offline_sales")) || [];
-
-    offlineSales.push({
-      cart,
-      cartTotal,
-      finalTotal,
-      paymentMode,
-      created_at: new Date()
-    });
-
-    localStorage.setItem("offline_sales", JSON.stringify(offlineSales));
-
-    alert("Saved Offline. Will sync later.");
-
-    setCart([]);
-    setFinalPrice("");
-
-    return;
-  }
 
   useEffect(() => {
-    fetchItems();
-  }, []);
+    if (session) fetchItems();
+  }, [session]);
 
   const fetchItems = async () => {
-    const { data } = await supabase
-      .from("phoolbook_items")
-      .select("*");
-
+    const { data } = await supabase.from("phoolbook_items").select("*")
+      .eq("user_id", session.user.id).order("name");
     setItems(data || []);
   };
 
   const fetchVariants = async (itemId) => {
-    const { data } = await supabase
-      .from("phoolbook_variants")
-      .select("*")
-      .eq("item_id", itemId);
-
+    const { data } = await supabase.from("phoolbook_variants").select("*")
+      .eq("item_id", itemId).eq("user_id", session.user.id).order("variant_name");
     setVariants(data || []);
   };
 
   const handleItemChange = (id) => {
     setSelectedItem(id);
     setSelectedVariant(null);
-    fetchVariants(id);
+    setVariants([]);
+    if (id) fetchVariants(id);
   };
 
   const handleVariantChange = (variantId) => {
-    const variant = variants.find(v => v.id === variantId);
-    setSelectedVariant(variant);
+    const v = variants.find(v => v.id === variantId);
+    setSelectedVariant(v || null);
   };
 
   const addToCart = () => {
-
-    if (!selectedVariant) {
-      alert("Select variant");
-      return;
+    if (!selectedVariant) { showToast("⚠️ Select a variant first"); return; }
+    const existing = cart.findIndex(c => c.variant_id === selectedVariant.id);
+    if (existing >= 0) {
+      const updated = [...cart];
+      updated[existing].qty += qty;
+      updated[existing].total = updated[existing].qty * updated[existing].price;
+      setCart(updated);
+    } else {
+      setCart([...cart, {
+        variant_id: selectedVariant.id,
+        name: selectedVariant.variant_name,
+        price: selectedVariant.base_price,
+        qty,
+        total: selectedVariant.base_price * qty,
+      }]);
     }
-
-    const total = selectedVariant.base_price * qty;
-
-    const item = {
-      variant_id: selectedVariant.id,
-      name: selectedVariant.variant_name,
-      price: selectedVariant.base_price,
-      qty,
-      total
-    };
-
-    setCart([...cart, item]);
     setQty(1);
+    showToast("🛒 Added to cart");
   };
 
-  const cartTotal = cart.reduce((sum, item) => sum + item.total, 0);
+  const cartTotal = cart.reduce((sum, i) => sum + i.total, 0);
+  const finalTotal = finalPrice ? Number(finalPrice) : cartTotal;
 
-  const increaseQty = (index) => {
-
-    const updatedCart = [...cart];
-
-    updatedCart[index].qty += 1;
-
-    updatedCart[index].total =
-      updatedCart[index].qty * updatedCart[index].price;
-
-    setCart(updatedCart);
+  const updateQty = (index, delta) => {
+    const updated = [...cart];
+    updated[index].qty = Math.max(1, updated[index].qty + delta);
+    updated[index].total = updated[index].qty * updated[index].price;
+    setCart(updated);
   };
 
-  const decreaseQty = (index) => {
-
-    const updatedCart = [...cart];
-
-    if(updatedCart[index].qty > 1){
-      updatedCart[index].qty -= 1;
-    }
-
-    updatedCart[index].total =
-      updatedCart[index].qty * updatedCart[index].price;
-
-    setCart(updatedCart);
-  };
-
-  const removeItem = (index) => {
-
-    const updatedCart = cart.filter((_,i)=> i !== index);
-
-    setCart(updatedCart);
-  };
+  const removeItem = (index) => setCart(cart.filter((_, i) => i !== index));
 
   const handleSaveSale = async () => {
+    if (!cart.length) { showToast("⚠️ Cart is empty"); return; }
 
-    if (cart.length === 0) {
-      alert("Cart is empty");
+    // Offline save
+    if (!isOnline) {
+      const offlineSales = JSON.parse(localStorage.getItem("offline_sales") || "[]");
+      offlineSales.push({ cart, cartTotal, finalTotal, paymentMode, created_at: new Date() });
+      localStorage.setItem("offline_sales", JSON.stringify(offlineSales));
+      showToast("📴 Saved offline — will sync later");
+      setCart([]);
+      setFinalPrice("");
       return;
     }
 
-    const finalTotal = finalPrice ? Number(finalPrice) : cartTotal;
+    setSaving(true);
+    const { data: saleData, error } = await supabase.from("phoolbook_sales")
+      .insert([{
+        user_id: session.user.id,
+        payment_mode: paymentMode,
+        cart_total: cartTotal,
+        final_total: finalTotal,
+      }]).select();
 
-    const { data: saleData, error } = await supabase
-      .from("phoolbook_sales")
-      .insert([
-        {
-          payment_mode: paymentMode,
-          cart_total: cartTotal,
-          final_total: finalTotal
-        }
-      ])
-      .select();
-
-    if (error) {
-      alert(error.message);
-      return;
-    }
-
-    const saleId = saleData[0].id;
+    if (error) { showToast("❌ " + error.message); setSaving(false); return; }
 
     const itemsToInsert = cart.map(item => ({
-      sale_id: saleId,
+      user_id: session.user.id,
+      sale_id: saleData[0].id,
       variant_id: item.variant_id,
       qty: item.qty,
       price: item.price,
-      total: item.total
+      total: item.total,
     }));
 
-    await supabase
-      .from("phoolbook_sale_items")
-      .insert(itemsToInsert);
+    await supabase.from("phoolbook_sale_items").insert(itemsToInsert);
 
-    alert("Sale saved ✅");
-
+    setSaving(false);
+    showToast("✅ Sale saved!");
     setCart([]);
     setFinalPrice("");
+    setSelectedItem("");
+    setSelectedVariant(null);
+    setVariants([]);
   };
 
   return (
-    <div style={{display:"flex",flexDirection:"column",gap:"15px"}}>
-
-      <h2>Add Sale</h2>
-
-      <select style={inputStyle} onChange={(e)=>handleItemChange(e.target.value)}>
-        <option>Select Item</option>
-        {items.map(item => (
-          <option key={item.id} value={item.id}>{item.name}</option>
-        ))}
-      </select>
-
-      <select style={inputStyle} onChange={(e)=>handleVariantChange(e.target.value)}>
-        <option>Select Variant</option>
-        {variants.map(v => (
-          <option key={v.id} value={v.id}>
-            {v.variant_name} ₹{v.base_price}
-          </option>
-        ))}
-      </select>
-
-      {/* Quantity Buttons */}
-
-      <div style={qtyContainer}>
-        <button style={qtyButton} onClick={()=>setQty(q=>Math.max(1,q-1))}>-</button>
-        <div style={qtyNumber}>{qty}</div>
-        <button style={qtyButton} onClick={()=>setQty(q=>q+1)}>+</button>
+    <div className="page">
+      <div className="page-title">
+        Record Sale
+        {!isOnline && <span style={{ color: "var(--rose)", fontSize: 12 }}>📴 Offline mode</span>}
       </div>
 
-      <button style={buttonStyle} onClick={addToCart}>
-        Add To Cart
-      </button>
-
-      {/* CART */}
-
-      {cart.length > 0 && (
-        <div style={cartBox}>
-          <h3>Cart</h3>
-
-          {cart.map((item,index)=>(
-            <div key={index} style={cartRow}>
-
-              <div style={{flex:2}}>
-                {item.name}
-              </div>
-
-              <div style={cartQtyBox}>
-                <button
-                  style={smallBtn}
-                  onClick={()=>decreaseQty(index)}
-                >
-                  -
-                </button>
-
-                <span>{item.qty}</span>
-
-                <button
-                  style={smallBtn}
-                  onClick={()=>increaseQty(index)}
-                >
-                  +
-                </button>
-              </div>
-
-              <div style={{flex:1}}>
-                ₹{item.total}
-              </div>
-
-              <button
-                style={removeBtn}
-                onClick={()=>removeItem(index)}
-              >
-                ✕
-              </button>
-
-            </div>
+      {/* Item selector */}
+      <div className="input-group">
+        <label className="input-label">Item</label>
+        <select className="input" value={selectedItem} onChange={(e) => handleItemChange(e.target.value)}>
+          <option value="">Select item…</option>
+          {items.map(item => (
+            <option key={item.id} value={item.id}>{item.name}</option>
           ))}
+        </select>
+      </div>
 
-          <h3>Total: ₹{cartTotal}</h3>
-
-          <input
-            style={inputStyle}
-            placeholder="Final Price After Bargain"
-            value={finalPrice}
-            onChange={(e)=>setFinalPrice(e.target.value)}
-          />
-
-          {/* Payment Toggle */}
-
-          <div style={toggleContainer}>
-            <button
-              style={{
-                ...toggleButton,
-                backgroundColor: paymentMode==="cash"?"#28a745":"#eee"
-              }}
-              onClick={()=>setPaymentMode("cash")}
-            >
-              Cash
-            </button>
-
-            <button
-              style={{
-                ...toggleButton,
-                backgroundColor: paymentMode==="upi"?"#007bff":"#eee"
-              }}
-              onClick={()=>setPaymentMode("upi")}
-            >
-              UPI
-            </button>
-          </div>
-
-          <button style={saveButton} onClick={handleSaveSale}>
-            Save Sale
-          </button>
-
+      {/* Variant selector */}
+      {variants.length > 0 && (
+        <div className="input-group">
+          <label className="input-label">Variant</label>
+          <select className="input" value={selectedVariant?.id || ""} onChange={(e) => handleVariantChange(e.target.value)}>
+            <option value="">Select variant…</option>
+            {variants.map(v => (
+              <option key={v.id} value={v.id}>{v.variant_name} — ₹{v.base_price}</option>
+            ))}
+          </select>
         </div>
       )}
 
+      {/* Qty stepper */}
+      {selectedVariant && (
+        <div className="input-group">
+          <label className="input-label">Quantity</label>
+          <div className="qty-stepper">
+            <button onClick={() => setQty(q => Math.max(1, q - 1))}>−</button>
+            <div className="qty-value">{qty}</div>
+            <button onClick={() => setQty(q => q + 1)}>+</button>
+          </div>
+        </div>
+      )}
+
+      <button className="btn btn-primary" onClick={addToCart} disabled={!selectedVariant}>
+        + Add to Cart
+      </button>
+
+      {/* Cart */}
+      {cart.length > 0 && (
+        <div className="card" style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+          <div className="section-label">Cart</div>
+
+          {cart.map((item, i) => (
+            <div key={i} className="cart-item">
+              <div className="cart-item-name">{item.name}</div>
+              <div className="mini-stepper">
+                <button onClick={() => updateQty(i, -1)}>−</button>
+                <span className="qty">{item.qty}</span>
+                <button onClick={() => updateQty(i, 1)}>+</button>
+              </div>
+              <div className="cart-item-price">₹{item.total}</div>
+              <button className="btn-icon" style={{ width: 28, height: 28, fontSize: 13 }} onClick={() => removeItem(i)}>✕</button>
+            </div>
+          ))}
+
+          <hr className="divider" style={{ margin: "10px 0" }} />
+
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+            <span style={{ fontWeight: 600, color: "var(--ink-muted)" }}>Cart Total</span>
+            <span style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 600 }}>₹{cartTotal}</span>
+          </div>
+
+          <div className="input-group">
+            <label className="input-label">Final price (after bargain)</label>
+            <input
+              className="input"
+              type="number"
+              placeholder={`₹${cartTotal}`}
+              value={finalPrice}
+              onChange={(e) => setFinalPrice(e.target.value)}
+            />
+          </div>
+
+          {finalPrice && Number(finalPrice) !== cartTotal && (
+            <div style={{ textAlign: "right", color: "var(--rose)", fontSize: 13, fontWeight: 600 }}>
+              Discount: ₹{cartTotal - Number(finalPrice)}
+            </div>
+          )}
+
+          <div className="input-group" style={{ marginTop: 10 }}>
+            <label className="input-label">Payment mode</label>
+            <div className="toggle-group">
+              <button
+                className={`toggle-btn ${paymentMode === "cash" ? "active-cash" : ""}`}
+                onClick={() => setPaymentMode("cash")}
+              >
+                💵 Cash
+              </button>
+              <button
+                className={`toggle-btn ${paymentMode === "upi" ? "active-upi" : ""}`}
+                onClick={() => setPaymentMode("upi")}
+              >
+                📲 UPI
+              </button>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", margin: "10px 0" }}>
+            <span style={{ fontWeight: 700, fontSize: 16 }}>Bill Total</span>
+            <span style={{ fontFamily: "var(--font-display)", fontSize: 24, fontWeight: 600, color: "var(--ink)" }}>₹{finalTotal}</span>
+          </div>
+
+          <button className="btn btn-amber" onClick={handleSaveSale} disabled={saving}>
+            {saving ? <span className="spinner" /> : "💾"} Save Sale
+          </button>
+        </div>
+      )}
     </div>
   );
 }
-
-const inputStyle={
-  padding:"12px",
-  borderRadius:"8px",
-  border:"1px solid #ccc"
-};
-
-const buttonStyle={
-  padding:"12px",
-  borderRadius:"10px",
-  border:"none",
-  background:"#333",
-  color:"white"
-};
-
-const saveButton={
-  padding:"14px",
-  borderRadius:"10px",
-  border:"none",
-  background:"#000",
-  color:"white",
-  fontWeight:"bold"
-};
-
-const qtyContainer={
-  display:"flex",
-  justifyContent:"center",
-  gap:"15px",
-  alignItems:"center"
-};
-
-const qtyButton={
-  width:"45px",
-  height:"45px",
-  fontSize:"22px",
-  borderRadius:"10px",
-  border:"none"
-};
-
-const qtyNumber={
-  fontSize:"20px",
-  fontWeight:"bold"
-};
-
-const toggleContainer={
-  display:"flex",
-  gap:"10px"
-};
-
-const toggleButton={
-  flex:1,
-  padding:"12px",
-  borderRadius:"10px",
-  border:"none"
-};
-
-const cartBox={
-  marginTop:"10px",
-  padding:"10px",
-  borderRadius:"10px",
-  background:"#f5f5f5"
-};
-
-const cartItem={
-  padding:"5px 0"
-};
-
-const cartRow={
-  display:"flex",
-  alignItems:"center",
-  gap:"10px",
-  padding:"6px 0"
-};
-
-const cartQtyBox={
-  display:"flex",
-  alignItems:"center",
-  gap:"8px"
-};
-
-const smallBtn={
-  width:"28px",
-  height:"28px",
-  borderRadius:"6px",
-  border:"none",
-  background:"#ddd",
-  fontWeight:"bold"
-};
-
-const removeBtn={
-  border:"none",
-  background:"transparent",
-  color:"red",
-  fontSize:"16px"
-};

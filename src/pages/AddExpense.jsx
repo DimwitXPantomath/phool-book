@@ -1,123 +1,102 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabase";
+import { useAuth } from "../hooks/useAuth";
+import { showToast } from "../components/Toast";
+
+const CATEGORIES = ["Flower Purchase", "Raw Materials", "Transport", "Rent", "Utilities", "Packaging", "Salary", "Other"];
 
 export default function AddExpense() {
+  const { session } = useAuth();
   const [category, setCategory] = useState("");
+  const [customCategory, setCustomCategory] = useState("");
   const [amount, setAmount] = useState("");
   const [paymentMode, setPaymentMode] = useState("cash");
+  const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSaveExpense = async () => {
-    if (!category || !amount) {
-      alert("Fill all fields");
-      return;
-    }
+  const finalCategory = category === "Other" ? customCategory : category;
 
+  const handleSave = async () => {
+    if (!finalCategory || !amount) { showToast("⚠️ Fill all fields"); return; }
     setLoading(true);
 
-    const { error } = await supabase
-      .from("phoolbook_expenses")
-      .insert([
-        {
-          category,
-          amount: Number(amount),
-          payment_mode: paymentMode,
-        },
-      ]);
+    const { error } = await supabase.from("phoolbook_expenses").insert([{
+      user_id: session.user.id,
+      category: finalCategory,
+      amount: Number(amount),
+      payment_mode: paymentMode,
+      note,
+    }]);
 
     setLoading(false);
+    if (error) { showToast("❌ " + error.message); return; }
 
-    if (error) {
-      alert("Error: " + error.message);
-      console.log(error);
-    } else {
-      alert("Expense added successfully");
-      setCategory("");
-      setAmount("");
-    }
+    showToast("✅ Expense saved!");
+    setCategory("");
+    setCustomCategory("");
+    setAmount("");
+    setNote("");
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
-      <h2>Add Expense</h2>
+    <div className="page">
+      <div className="page-title">Add Expense</div>
 
-      <input
-        style={inputStyle}
-        type="text"
-        placeholder="Flower Purchase / Transport / Rent"
-        value={category}
-        onChange={(e) => setCategory(e.target.value)}
-      />
-
-      <input
-        style={inputStyle}
-        type="number"
-        placeholder="Amount"
-        value={amount}
-        onChange={(e) => setAmount(e.target.value)}
-      />
-
-      {/* Toggle Buttons */}
-      <div style={toggleContainer}>
-        <button
-          style={{
-            ...toggleButton,
-            backgroundColor: paymentMode === "cash" ? "#28a745" : "#e0e0e0",
-            color: paymentMode === "cash" ? "white" : "black",
-          }}
-          onClick={() => setPaymentMode("cash")}
-        >
-          💵 Cash
-        </button>
-
-        <button
-          style={{
-            ...toggleButton,
-            backgroundColor: paymentMode === "upi" ? "#007bff" : "#e0e0e0",
-            color: paymentMode === "upi" ? "white" : "black",
-          }}
-          onClick={() => setPaymentMode("upi")}
-        >
-          📲 UPI
-        </button>
+      <div className="input-group">
+        <label className="input-label">Category</label>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          {CATEGORIES.map(c => (
+            <button
+              key={c}
+              onClick={() => setCategory(c)}
+              style={{
+                padding: "10px 8px",
+                borderRadius: "var(--radius-sm)",
+                border: "1.5px solid",
+                borderColor: category === c ? "var(--ink)" : "var(--border)",
+                background: category === c ? "var(--ink)" : "var(--warm-white)",
+                color: category === c ? "var(--cream)" : "var(--ink)",
+                fontSize: 13,
+                fontWeight: 600,
+                fontFamily: "var(--font-body)",
+                cursor: "pointer",
+                transition: "all var(--transition)",
+              }}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <button style={buttonStyle} onClick={handleSaveExpense} disabled={loading}>
-        {loading ? "Saving..." : "Save Expense"}
+      {category === "Other" && (
+        <div className="input-group">
+          <label className="input-label">Custom Category</label>
+          <input className="input" placeholder="Describe expense…" value={customCategory} onChange={e => setCustomCategory(e.target.value)} />
+        </div>
+      )}
+
+      <div className="input-group">
+        <label className="input-label">Amount (₹)</label>
+        <input className="input" type="number" placeholder="0" value={amount} onChange={e => setAmount(e.target.value)} />
+      </div>
+
+      <div className="input-group">
+        <label className="input-label">Payment mode</label>
+        <div className="toggle-group">
+          <button className={`toggle-btn ${paymentMode === "cash" ? "active-cash" : ""}`} onClick={() => setPaymentMode("cash")}>💵 Cash</button>
+          <button className={`toggle-btn ${paymentMode === "upi" ? "active-upi" : ""}`} onClick={() => setPaymentMode("upi")}>📲 UPI</button>
+        </div>
+      </div>
+
+      <div className="input-group">
+        <label className="input-label">Note (optional)</label>
+        <input className="input" placeholder="e.g. Bought from Karol Bagh market" value={note} onChange={e => setNote(e.target.value)} />
+      </div>
+
+      <button className="btn btn-primary" onClick={handleSave} disabled={loading}>
+        {loading ? <span className="spinner" /> : "💾"} Save Expense
       </button>
     </div>
   );
 }
-
-/* Reuse styles */
-
-const inputStyle = {
-  padding: "12px",
-  fontSize: "16px",
-  borderRadius: "8px",
-  border: "1px solid #ccc",
-};
-
-const toggleContainer = {
-  display: "flex",
-  gap: "10px",
-};
-
-const toggleButton = {
-  flex: 1,
-  padding: "14px",
-  fontSize: "16px",
-  borderRadius: "10px",
-  border: "none",
-  fontWeight: "bold",
-};
-
-const buttonStyle = {
-  padding: "14px",
-  fontSize: "16px",
-  borderRadius: "8px",
-  border: "none",
-  backgroundColor: "#dc3545",
-  color: "white",
-  fontWeight: "bold",
-};

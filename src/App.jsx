@@ -1,139 +1,90 @@
-import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, NavLink, useLocation } from "react-router-dom";
+import { AuthProvider, useAuth } from "./hooks/useAuth";
+import { Toast } from "./components/Toast";
+import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
-import AddItem from "./pages/AddItem";
-import AddVariant from "./pages/AddVariant";
 import AddSale from "./pages/AddSale";
 import AddExpense from "./pages/AddExpense";
+import ManageItems from "./pages/ManageItems";
+import BatchTracker from "./pages/BatchTracker";
 import SalesReport from "./pages/SalesReport";
-import { useEffect, useState } from "react";
-import { supabase } from "./lib/supabase";
-import Auth from "./pages/Auth";
+import Settings from "./pages/Settings";
 
+function AppShell() {
+  const { session, profile } = useAuth();
+  const location = useLocation();
 
-const [session,setSession] = useState(null);
+  // Loading state while auth resolves
+  if (session === undefined) {
+    return (
+      <div style={{ minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--cream)" }}>
+        <span className="spinner" style={{ width: 32, height: 32, borderWidth: 3, color: "var(--ink-muted)" }} />
+      </div>
+    );
+  }
 
-useEffect(()=>{
+  if (!session) return <Auth />;
 
-  supabase.auth.getSession().then(({data})=>{
-    setSession(data.session);
-  });
+  const NAV = [
+    { to: "/", icon: "💰", label: "Sale" },
+    { to: "/dashboard", icon: "📊", label: "Today" },
+    { to: "/batch", icon: "🍞", label: "Batch" },
+    { to: "/report", icon: "📑", label: "Report" },
+    { to: "/catalogue", icon: "📦", label: "Items" },
+    { to: "/settings", icon: "⚙️", label: "Settings" },
+  ];
 
-  supabase.auth.onAuthStateChange((_event,session)=>{
-    setSession(session);
-  });
+  return (
+    <div className="app-shell">
+      <header className="app-header">
+        <div className="brand">
+          <div className="business-name">{profile?.business_name || "Phool Book"}</div>
+          <div className="app-tagline">📒 Phool Book</div>
+        </div>
+        <div className="header-actions">
+          <NavLink to="/expense" style={{ textDecoration: "none" }}>
+            <button className="btn btn-ghost btn-sm">+ Expense</button>
+          </NavLink>
+        </div>
+      </header>
 
-},[]);
+      <div style={{ flex: 1, overflowY: "auto" }}>
+        <Routes>
+          <Route path="/" element={<AddSale />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/expense" element={<AddExpense />} />
+          <Route path="/catalogue" element={<ManageItems />} />
+          <Route path="/batch" element={<BatchTracker />} />
+          <Route path="/report" element={<SalesReport />} />
+          <Route path="/settings" element={<Settings />} />
+        </Routes>
+      </div>
+
+      <nav className="bottom-nav">
+        {NAV.map(({ to, icon, label }) => (
+          <NavLink
+            key={to}
+            to={to}
+            end={to === "/"}
+            className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}
+          >
+            <span className="nav-icon">{icon}</span>
+            <span className="nav-label">{label}</span>
+          </NavLink>
+        ))}
+      </nav>
+
+      <Toast />
+    </div>
+  );
+}
 
 export default function App() {
   return (
     <Router>
-      <div style={containerStyle}>
-
-        <div style={headerBar}>
-          <h1 style={businessName}>🌸 Nisha Florist</h1>
-
-          <div style={{display:"flex",gap:"10px",alignItems:"center"}}>
-            <span style={brandName}>Phool Book</span>
-
-            <button
-              onClick={()=>supabase.auth.signOut()}
-              style={logoutBtn}
-            >
-              Logout
-            </button>
-          </div>
-        </div>
-
-        <Routes>
-          <Route
-            path="/"
-            element={
-              <>
-                <AddSale />
-                <div style={secondarySection}>
-                  <Link style={secondaryButton} to="/add-expense">
-                    ➕ Add Expense
-                  </Link>
-                  <Link style={secondaryButton} to="/dashboard">
-                    📊 Dashboard
-                  </Link>
-                  <Link style={secondaryButton} to="/add-item">
-                    📦 Manage Items
-                  </Link>
-                  <Link style={secondaryButton} to="/add-variant">
-                    🌹 Manage Variants
-                  </Link>
-                  <Link style={secondaryButton} to="/report">
-                    📑 Sales Report
-                  </Link>
-                </div>
-              </>
-            }
-          />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/add-item" element={<AddItem />} />
-          <Route path="/add-variant" element={<AddVariant />} />
-          <Route path="/add-expense" element={<AddExpense />} />
-          <Route path="/report" element={<SalesReport />} />
-        </Routes>
-
-      </div>
+      <AuthProvider>
+        <AppShell />
+      </AuthProvider>
     </Router>
   );
 }
-
-const containerStyle = {
-  maxWidth: "420px",
-  margin: "0 auto",
-  padding: "15px",
-  fontFamily: "sans-serif",
-};
-
-const titleStyle = {
-  textAlign: "center",
-  marginBottom: "15px",
-};
-
-const secondarySection = {
-  marginTop: "25px",
-  display: "flex",
-  flexDirection: "column",
-  gap: "10px",
-};
-
-const secondaryButton = {
-  padding: "12px",
-  backgroundColor: "#f2f2f2",
-  textDecoration: "none",
-  textAlign: "center",
-  borderRadius: "10px",
-  fontWeight: "bold",
-  color: "black",
-};
-
-const headerBar = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  marginBottom: "20px",
-};
-
-const businessName = {
-  fontSize: "20px",
-  fontWeight: "bold",
-};
-
-const brandName = {
-  fontSize: "12px",
-  color: "gray",
-  fontWeight: "bold",
-};
-
-const logoutBtn = {
-  padding: "6px 10px",
-  borderRadius: "6px",
-  border: "none",
-  background: "#000",
-  color: "#fff",
-  fontSize: "12px"
-};
