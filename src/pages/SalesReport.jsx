@@ -21,8 +21,8 @@ export default function SalesReport() {
     from.setDate(from.getDate() - Number(dateRange));
 
     const { data } = await supabase
-      .from("phoolbook_sale_items")
-      .select(`qty, total, price, phoolbook_variants(variant_name), phoolbook_sales(payment_mode, created_at, final_total)`)
+      .from("hisaabi_sale_items")
+      .select(`qty, total, price, hisaabi_variants(variant_name), hisaabi_sales(payment_mode, created_at, final_total)`)
       .eq("user_id", session.user.id)
       .gte("created_at", from.toISOString());
 
@@ -31,13 +31,13 @@ export default function SalesReport() {
   };
 
   const totalSales = data.reduce((sum, r) => sum + Number(r.total), 0);
-  const cash = data.filter(r => r.phoolbook_sales?.payment_mode === "cash").reduce((s, r) => s + Number(r.total), 0);
-  const upi = data.filter(r => r.phoolbook_sales?.payment_mode === "upi").reduce((s, r) => s + Number(r.total), 0);
+  const cash = data.filter(r => r.hisaabi_sales?.payment_mode === "cash").reduce((s, r) => s + Number(r.total), 0);
+  const upi = data.filter(r => r.hisaabi_sales?.payment_mode === "upi").reduce((s, r) => s + Number(r.total), 0);
   const totalQty = data.reduce((sum, r) => sum + r.qty, 0);
 
   const salesPerDay = {};
   data.forEach(r => {
-    const date = new Date(r.phoolbook_sales?.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+    const date = new Date(r.hisaabi_sales?.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
     if (!salesPerDay[date]) salesPerDay[date] = 0;
     salesPerDay[date] += Number(r.total);
   });
@@ -45,7 +45,7 @@ export default function SalesReport() {
 
   const itemMap = {};
   data.forEach(r => {
-    const name = r.phoolbook_variants?.variant_name || "?";
+    const name = r.hisaabi_variants?.variant_name || "?";
     if (!itemMap[name]) itemMap[name] = { qty: 0, total: 0 };
     itemMap[name].qty += r.qty;
     itemMap[name].total += Number(r.total);

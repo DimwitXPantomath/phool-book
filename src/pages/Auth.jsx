@@ -96,7 +96,7 @@ export default function Auth() {
         setError(error.message);
       } else if (data.user) {
         // Upsert profile — handles both trigger-created and missing profiles
-        await supabase.from("phoolbook_profiles").upsert({
+        await supabase.from("hisaabi_profiles").upsert({
           user_id: data.user.id,
           business_name: businessName.trim(),
         }, { onConflict: "user_id" });
@@ -115,9 +115,9 @@ export default function Auth() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <div className="auth-logo">📒 Phool Book</div>
+        <div className="auth-logo">📒 Hisaabi</div>
         <div className="auth-sub">
-          {mode === "login" ? "Sign in to your ledger" : "Create your business ledger"}
+          {mode === "login" ? "Aapka rozana hisaab" : "Nayi dukaan shuru karein"}
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -153,7 +153,7 @@ export default function Auth() {
               <label className="input-label">Business Name</label>
               <input
                 className="input"
-                placeholder="e.g. Nisha Florist / Dimwit Bakes"
+                placeholder="e.g. Nisha Florist, Dimwit Bakes…"
                 value={businessName}
                 onChange={(e) => setBusinessName(e.target.value)}
               />

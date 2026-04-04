@@ -24,7 +24,7 @@ export function AuthProvider({ children }) {
 
   const fetchProfile = async (userId) => {
     const { data } = await supabase
-      .from("phoolbook_profiles")
+      .from("hisaabi_profiles")
       .select("*")
       .eq("user_id", userId)
       .single();
