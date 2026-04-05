@@ -16,7 +16,7 @@ export default function ClosingHistory() {
 
   const fetchClosings = async () => {
     setLoading(true);
-    const { data } = await supabase.from("hisaabi_closing").select("*")
+    const { data } = await supabase.from("ledgit_closing").select("*")
       .eq("user_id", session.user.id).order("closing_date", { ascending: false });
     const rows = data || [];
     setClosings(rows);

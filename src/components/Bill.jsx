@@ -206,7 +206,7 @@ export default function Bill({ sale, profile, onClose }) {
 
             <div style={{ textAlign: "center", fontSize: 11, color: "#9C8E79" }}>
               <div>Thank you for your purchase! 🙏</div>
-              <div style={{ marginTop: 4, fontSize: 10 }}>Powered by Hisaabi</div>
+              <div style={{ marginTop: 4, fontSize: 10 }}>Powered by Ledgit</div>
             </div>
 
           </div>

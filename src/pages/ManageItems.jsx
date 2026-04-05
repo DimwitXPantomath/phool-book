@@ -16,21 +16,21 @@ export default function ManageItems() {
   useEffect(() => { if (session) fetchItems(); }, [session]);
 
   const fetchItems = async () => {
-    const { data } = await supabase.from("hisaabi_items").select("*")
+    const { data } = await supabase.from("ledgit_items").select("*")
       .eq("user_id", session.user.id).order("name");
     setItems(data || []);
   };
 
   const fetchVariants = async (itemId) => {
     if (!itemId) { setVariants([]); return; }
-    const { data } = await supabase.from("hisaabi_variants").select("*")
+    const { data } = await supabase.from("ledgit_variants").select("*")
       .eq("item_id", itemId).eq("user_id", session.user.id).order("variant_name");
     setVariants(data || []);
   };
 
   const addItem = async () => {
     if (!itemName.trim()) { showToast("⚠️ Enter item name"); return; }
-    const { error } = await supabase.from("hisaabi_items")
+    const { error } = await supabase.from("ledgit_items")
       .insert([{ user_id: session.user.id, name: itemName.trim() }]);
     if (error) { showToast("❌ " + error.message); return; }
     showToast("✅ Item added");
@@ -40,7 +40,7 @@ export default function ManageItems() {
 
   const deleteItem = async (id) => {
     if (!window.confirm("Delete this item and all its variants?")) return;
-    await supabase.from("hisaabi_items").delete().eq("id", id).eq("user_id", session.user.id);
+    await supabase.from("ledgit_items").delete().eq("id", id).eq("user_id", session.user.id);
     showToast("🗑️ Item deleted");
     fetchItems();
   };
@@ -49,7 +49,7 @@ export default function ManageItems() {
     if (!selectedItemId || !variantName.trim() || !variantPrice) {
       showToast("⚠️ Fill all fields"); return;
     }
-    const { error } = await supabase.from("hisaabi_variants").insert([{
+    const { error } = await supabase.from("ledgit_variants").insert([{
       user_id: session.user.id,
       item_id: selectedItemId,
       variant_name: variantName.trim(),
@@ -64,7 +64,7 @@ export default function ManageItems() {
 
   const deleteVariant = async (id) => {
     if (!window.confirm("Delete this variant?")) return;
-    await supabase.from("hisaabi_variants").delete().eq("id", id).eq("user_id", session.user.id);
+    await supabase.from("ledgit_variants").delete().eq("id", id).eq("user_id", session.user.id);
     showToast("🗑️ Variant deleted");
     fetchVariants(selectedItemId);
   };

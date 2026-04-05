@@ -19,7 +19,7 @@ export default function Khata() {
 
   const fetchCredits = async () => {
     setLoading(true);
-    const { data } = await supabase.from("hisaabi_sales")
+    const { data } = await supabase.from("ledgit_sales")
       .select("id, customer_name, customer_phone, final_total, created_at, credit_paid_at, note, is_credit")
       .eq("user_id", session.user.id)
       .eq("is_credit", true)
@@ -36,7 +36,7 @@ export default function Khata() {
   const markPaid = async (id) => {
     const confirmed = window.confirm("Mark this as paid?");
     if (!confirmed) return;
-    const { error } = await supabase.from("hisaabi_sales")
+    const { error } = await supabase.from("ledgit_sales")
       .update({ credit_paid_at: new Date().toISOString(), payment_mode: "cash" })
       .eq("id", id).eq("user_id", session.user.id);
     if (error) { showToast("❌ " + error.message); return; }

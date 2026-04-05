@@ -29,8 +29,8 @@ export default function SalesSearch() {
 
   const fetchSales = async () => {
     setLoading(true);
-    let q = supabase.from("hisaabi_sales")
-      .select(`*, hisaabi_sale_items(qty, price, total, hisaabi_variants(variant_name))`)
+    let q = supabase.from("ledgit_sales")
+      .select(`*, ledgit_sale_items(qty, price, total, ledgit_variants(variant_name))`)
       .eq("user_id", session.user.id)
       .order("created_at", { ascending: false })
       .limit(200);
@@ -48,7 +48,7 @@ export default function SalesSearch() {
     return (
       (s.customer_name || "").toLowerCase().includes(q) ||
       (s.note || "").toLowerCase().includes(q) ||
-      s.hisaabi_sale_items?.some(i => (i.hisaabi_variants?.variant_name || "").toLowerCase().includes(q))
+      s.ledgit_sale_items?.some(i => (i.ledgit_variants?.variant_name || "").toLowerCase().includes(q))
     );
   });
 
@@ -156,11 +156,11 @@ export default function SalesSearch() {
                 </div>
 
                 {/* Expanded items */}
-                {isOpen && s.hisaabi_sale_items?.length > 0 && (
+                {isOpen && s.ledgit_sale_items?.length > 0 && (
                   <div style={{ marginTop: 12, borderTop: "1px dashed var(--border)", paddingTop: 10 }}>
-                    {s.hisaabi_sale_items.map((item, i) => (
+                    {s.ledgit_sale_items.map((item, i) => (
                       <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "4px 0" }}>
-                        <span>{item.hisaabi_variants?.variant_name || "Item"} × {item.qty}</span>
+                        <span>{item.ledgit_variants?.variant_name || "Item"} × {item.qty}</span>
                         <span style={{ fontWeight: 600 }}>₹{item.total}</span>
                       </div>
                     ))}

@@ -49,13 +49,13 @@ export default function AddSale() {
   useEffect(() => { if (session) fetchItems(); }, [session]);
 
   const fetchItems = async () => {
-    const { data } = await supabase.from("hisaabi_items").select("*")
+    const { data } = await supabase.from("ledgit_items").select("*")
       .eq("user_id", session.user.id).order("name");
     setItems(data || []);
   };
 
   const fetchVariants = async (itemId) => {
-    const { data } = await supabase.from("hisaabi_variants").select("*")
+    const { data } = await supabase.from("ledgit_variants").select("*")
       .eq("item_id", itemId).eq("user_id", session.user.id).order("variant_name");
     setVariants(data || []);
   };
@@ -124,7 +124,7 @@ export default function AddSale() {
     }
 
     setSaving(true);
-    const { data: saleData, error } = await supabase.from("hisaabi_sales").insert([{
+    const { data: saleData, error } = await supabase.from("ledgit_sales").insert([{
       user_id:       session.user.id,
       payment_mode:  isCredit ? "credit" : paymentMode,
       channel,
@@ -138,7 +138,7 @@ export default function AddSale() {
 
     if (error) { showToast("❌ " + error.message); setSaving(false); return; }
 
-    await supabase.from("hisaabi_sale_items").insert(
+    await supabase.from("ledgit_sale_items").insert(
       cart.map(item => ({
         user_id:    session.user.id,
         sale_id:    saleData[0].id,

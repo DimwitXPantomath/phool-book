@@ -20,7 +20,7 @@ export default function AddExpense() {
     if (!finalCategory || !amount) { showToast("⚠️ Fill all fields"); return; }
     setLoading(true);
 
-    const { error } = await supabase.from("hisaabi_expenses").insert([{
+    const { error } = await supabase.from("ledgit_expenses").insert([{
       user_id: session.user.id,
       category: finalCategory,
       amount: Number(amount),

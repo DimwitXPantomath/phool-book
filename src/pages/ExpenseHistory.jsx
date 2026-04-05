@@ -20,7 +20,7 @@ export default function ExpenseHistory() {
 
   const fetchExpenses = async () => {
     setLoading(true);
-    let q = supabase.from("hisaabi_expenses").select("*")
+    let q = supabase.from("ledgit_expenses").select("*")
       .eq("user_id", session.user.id)
       .order("created_at", { ascending: false });
     if (dateFrom) q = q.gte("created_at", dateFrom);
@@ -34,7 +34,7 @@ export default function ExpenseHistory() {
 
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this expense?")) return;
-    await supabase.from("hisaabi_expenses").delete().eq("id", id).eq("user_id", session.user.id);
+    await supabase.from("ledgit_expenses").delete().eq("id", id).eq("user_id", session.user.id);
     showToast("🗑️ Expense deleted");
     fetchExpenses();
   };

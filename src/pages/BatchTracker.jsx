@@ -39,14 +39,14 @@ export default function BatchTracker() {
   useEffect(() => { if (session) { fetchItems(); fetchBatches(); } }, [session]);
 
   const fetchItems = async () => {
-    const { data } = await supabase.from("hisaabi_items").select("*")
+    const { data } = await supabase.from("ledgit_items").select("*")
       .eq("user_id", session.user.id).order("name");
     setItems(data || []);
   };
 
   const fetchBatches = async (itemFilter = "") => {
-    let query = supabase.from("hisaabi_batches")
-      .select(`*, hisaabi_items(name)`)
+    let query = supabase.from("ledgit_batches")
+      .select(`*, ledgit_items(name)`)
       .eq("user_id", session.user.id)
       .order("baked_at", { ascending: false });
     if (itemFilter) query = query.eq("item_id", itemFilter);
@@ -65,7 +65,7 @@ export default function BatchTracker() {
       return;
     }
     setSaving(true);
-    const { error } = await supabase.from("hisaabi_batches").insert([{
+    const { error } = await supabase.from("ledgit_batches").insert([{
       user_id: session.user.id,
       item_id: itemId,
       batch_number: batchNumber.trim().toUpperCase(),
@@ -86,14 +86,14 @@ export default function BatchTracker() {
 
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this batch record?")) return;
-    await supabase.from("hisaabi_batches").delete().eq("id", id).eq("user_id", session.user.id);
+    await supabase.from("ledgit_batches").delete().eq("id", id).eq("user_id", session.user.id);
     showToast("🗑️ Batch deleted");
     fetchBatches(filterItem);
   };
 
   // Group batches by item for summary view
   const grouped = batches.reduce((acc, b) => {
-    const name = b.hisaabi_items?.name || "Unknown";
+    const name = b.ledgit_items?.name || "Unknown";
     if (!acc[name]) acc[name] = [];
     acc[name].push(b);
     return acc;

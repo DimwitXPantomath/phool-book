@@ -25,7 +25,7 @@ export default function Dashboard() {
     for (const sale of offlineSales) {
       try {
         const { data: saleData } = await supabase
-          .from("hisaabi_sales")
+          .from("ledgit_sales")
           .insert([{
             user_id: session.user.id,
             payment_mode: sale.paymentMode,
@@ -43,7 +43,7 @@ export default function Dashboard() {
             price: i.price,
             total: i.total,
           }));
-          await supabase.from("hisaabi_sale_items").insert(items);
+          await supabase.from("ledgit_sale_items").insert(items);
         }
       } catch (e) { console.error(e); }
     }
@@ -58,9 +58,9 @@ export default function Dashboard() {
     const today = new Date().toISOString().split("T")[0];
 
     const [{ data: salesData }, { data: expenseData }] = await Promise.all([
-      supabase.from("hisaabi_sales").select("*")
+      supabase.from("ledgit_sales").select("*")
         .eq("user_id", session.user.id).gte("created_at", today),
-      supabase.from("hisaabi_expenses").select("*")
+      supabase.from("ledgit_expenses").select("*")
         .eq("user_id", session.user.id).gte("created_at", today),
     ]);
 
@@ -87,7 +87,7 @@ export default function Dashboard() {
     if (!confirmed) return;
 
     setClosing(true);
-    const { error } = await supabase.from("hisaabi_closing").insert([{
+    const { error } = await supabase.from("ledgit_closing").insert([{
       user_id: session.user.id,
       closing_date: today,
       total_sales: data.sales,
@@ -101,7 +101,7 @@ export default function Dashboard() {
 
   const sendWhatsApp = () => {
     const name = profile?.business_name || "My Business";
-    const msg = `📒 ${name} — Daily Report\n\nDate: ${new Date().toLocaleDateString("en-IN")}\n\n💰 Sales: ₹${data.sales}\n💸 Expenses: ₹${data.expenses}\n📈 Profit: ₹${profit}\n\n💵 Cash: ₹${data.cash}\n📲 UPI: ₹${data.upi}`;
+    const msg = `📒 ${name} — Daily Report · Ledgit\n\nDate: ${new Date().toLocaleDateString("en-IN")}\n\n💰 Sales: ₹${data.sales}\n💸 Expenses: ₹${data.expenses}\n📈 Profit: ₹${profit}\n\n💵 Cash: ₹${data.cash}\n📲 UPI: ₹${data.upi}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
   };
 

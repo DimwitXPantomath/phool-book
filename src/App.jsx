@@ -40,8 +40,8 @@ function AppShell() {
     <div className="app-shell">
       <header className="app-header">
         <div className="brand">
-          <div className="business-name">{profile?.business_name || "Hisaabi"}</div>
-          <div className="app-tagline">Aapka rozana hisaab</div>
+          <div className="business-name">{profile?.business_name || "Ledgit"}</div>
+          <div className="app-tagline">Your business, sorted.</div>
         </div>
         <div className="header-actions">
           <NavLink to="/expense" style={{ textDecoration: "none" }}>

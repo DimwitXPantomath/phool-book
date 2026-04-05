@@ -112,7 +112,7 @@ export default function Settings() {
       showToast("⚠️ Enter a valid tax rate"); return;
     }
     setSaving(true);
-    const { error } = await supabase.from("hisaabi_profiles").update({
+    const { error } = await supabase.from("ledgit_profiles").update({
       business_name: businessName.trim(),
       owner_name: ownerName.trim(),
       phone: phone.trim(),
