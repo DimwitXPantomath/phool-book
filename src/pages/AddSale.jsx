@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../hooks/useAuth";
 import { showToast } from "../components/Toast";
@@ -29,6 +29,7 @@ export default function AddSale() {
   const [saleNote, setSaleNote]           = useState("");
   const [saving, setSaving]               = useState(false);
   const [billData, setBillData]           = useState(null);
+  const cartRef = useRef(null);
 
   // Channels available from profile settings
   const onlineEnabled    = profile?.online_channels_enabled || false;
@@ -90,6 +91,9 @@ export default function AddSale() {
     }
     setQty(1);
     showToast("🛒 Added to cart");
+    setTimeout(() => {
+      cartRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
   };
 
   const cartTotal  = cart.reduce((sum, i) => sum + i.total, 0);
@@ -221,7 +225,7 @@ export default function AddSale() {
 
       {/* Cart */}
       {cart.length > 0 && (
-        <div className="card" style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+        <div ref={cartRef} className="card" style={{ display: "flex", flexDirection: "column", gap: 0 }}>
           <div className="section-label">Cart</div>
 
           {cart.map((item, i) => (
