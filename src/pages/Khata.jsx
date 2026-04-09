@@ -46,7 +46,17 @@ export default function Khata() {
 
   const sendWhatsApp = (row) => {
     const msg = `Hi ${row.customer_name}, you have a pending payment of ₹${Number(row.final_total).toLocaleString()} from ${fmt(row.created_at)}. Please clear when convenient. Thank you! 🙏`;
-    window.open(`https://wa.me/${row.customer_phone?.replace(/\D/g, "")}?text=${encodeURIComponent(msg)}`, "_blank");
+
+    // Strip everything except digits
+    let phone = (row.customer_phone || "").replace(/\D/g, "");
+
+    // If number is 10 digits (Indian mobile), prepend country code 91
+    if (phone.length === 10) phone = "91" + phone;
+
+    // If starts with 0, replace with 91
+    if (phone.startsWith("0")) phone = "91" + phone.slice(1);
+
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, "_blank");
   };
 
   const unpaid = credits.filter(c => !c.credit_paid_at);
