@@ -101,7 +101,19 @@ export default function Dashboard() {
 
   const sendWhatsApp = () => {
     const name = profile?.business_name || "My Business";
-    const msg = `📒 ${name} — Daily Report · Ledgit\n\nDate: ${new Date().toLocaleDateString("en-IN")}\n\n💰 Sales: ₹${data.sales}\n💸 Expenses: ₹${data.expenses}\n📈 Profit: ₹${profit}\n\n💵 Cash: ₹${data.cash}\n📲 UPI: ₹${data.upi}`;
+    const owner = profile?.owner_name ? `\n👤 ${profile.owner_name}` : "";
+    const phone = profile?.phone ? `\n📞 ${profile.phone}` : "";
+    const msg = `📒 *${name}* — Daily Report
+${new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}${owner}${phone}
+
+💰 Sales:    ₹${data.sales.toLocaleString()}
+💸 Expenses: ₹${data.expenses.toLocaleString()}
+📈 Profit:   ₹${profit.toLocaleString()}
+
+💵 Cash: ₹${data.cash.toLocaleString()}
+📲 UPI:  ₹${data.upi.toLocaleString()}
+
+_Sent via Ledgit_`;
     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
   };
 

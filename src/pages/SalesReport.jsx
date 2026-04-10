@@ -20,41 +20,48 @@ export default function SalesReport() {
     const from = new Date();
     from.setDate(from.getDate() - Number(dateRange));
 
-    const { data } = await supabase
-      .from("ledgit_sale_items")
-      .select(`qty, total, price, ledgit_variants(variant_name), ledgit_sales(payment_mode, created_at, final_total)`)
+    // Query sales directly — more reliable, includes credit sales
+    const { data: salesData } = await supabase
+      .from("ledgit_sales")
+      .select(`id, payment_mode, final_total, created_at, ledgit_sale_items(qty, total, ledgit_variants(variant_name))`)
       .eq("user_id", session.user.id)
-      .gte("created_at", from.toISOString());
+      .gte("created_at", from.toISOString())
+      .order("created_at", { ascending: true });
 
-    setData(data || []);
+    setData(salesData || []);
     setLoading(false);
   };
 
-  const totalSales = data.reduce((sum, r) => sum + Number(r.total), 0);
-  const cash = data.filter(r => r.ledgit_sales?.payment_mode === "cash").reduce((s, r) => s + Number(r.total), 0);
-  const upi = data.filter(r => r.ledgit_sales?.payment_mode === "upi").reduce((s, r) => s + Number(r.total), 0);
-  const totalQty = data.reduce((sum, r) => sum + r.qty, 0);
+  // Flatten sale items for item-level stats
+  const allItems = data.flatMap(s => (s.ledgit_sale_items || []).map(i => ({ ...i, sale: s })));
+
+  const totalSales = data.reduce((sum, s) => sum + Number(s.final_total), 0);
+  const cash  = data.filter(s => s.payment_mode === "cash").reduce((sum, s) => sum + Number(s.final_total), 0);
+  const upi   = data.filter(s => s.payment_mode === "upi").reduce((sum, s) => sum + Number(s.final_total), 0);
+  const credit = data.filter(s => s.payment_mode === "credit").reduce((sum, s) => sum + Number(s.final_total), 0);
+  const totalQty = allItems.reduce((sum, i) => sum + i.qty, 0);
 
   const salesPerDay = {};
-  data.forEach(r => {
-    const date = new Date(r.ledgit_sales?.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+  data.forEach(s => {
+    const date = new Date(s.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
     if (!salesPerDay[date]) salesPerDay[date] = 0;
-    salesPerDay[date] += Number(r.total);
+    salesPerDay[date] += Number(s.final_total);
   });
   const salesPerDayData = Object.entries(salesPerDay).map(([date, sales]) => ({ date, sales }));
 
   const itemMap = {};
-  data.forEach(r => {
-    const name = r.ledgit_variants?.variant_name || "?";
+  allItems.forEach(i => {
+    const name = i.ledgit_variants?.variant_name || "?";
     if (!itemMap[name]) itemMap[name] = { qty: 0, total: 0 };
-    itemMap[name].qty += r.qty;
-    itemMap[name].total += Number(r.total);
+    itemMap[name].qty += i.qty;
+    itemMap[name].total += Number(i.total);
   });
   const itemData = Object.entries(itemMap).sort((a, b) => b[1].qty - a[1].qty).map(([name, v]) => ({ name, ...v }));
 
   const paymentData = [
     { name: "Cash", value: cash },
     { name: "UPI", value: upi },
+    { name: "Credit", value: credit },
   ].filter(d => d.value > 0);
 
   if (loading) return (
@@ -182,6 +189,12 @@ export default function SalesReport() {
               <span>📲 UPI</span>
               <span style={{ fontWeight: 700, color: "var(--blue)" }}>₹{upi.toLocaleString()}</span>
             </div>
+            {credit > 0 && (
+              <div className="list-row" style={{ padding: "14px 16px" }}>
+                <span>📋 Credit (Khata)</span>
+                <span style={{ fontWeight: 700, color: "var(--rose)" }}>₹{credit.toLocaleString()}</span>
+              </div>
+            )}
           </div>
         </>
       )}

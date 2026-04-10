@@ -8,7 +8,7 @@ function fmt(dt) {
 }
 
 export default function Khata() {
-  const { session } = useAuth();
+  const { session, profile } = useAuth();
   const [credits, setCredits]   = useState([]);
   const [loading, setLoading]   = useState(true);
   const [tab, setTab]           = useState("unpaid"); // unpaid | paid
@@ -20,7 +20,7 @@ export default function Khata() {
   const fetchCredits = async () => {
     setLoading(true);
     const { data } = await supabase.from("ledgit_sales")
-      .select("id, customer_name, customer_phone, final_total, created_at, credit_paid_at, note, is_credit")
+      .select("id, customer_name, customer_phone, final_total, created_at, credit_paid_at, note, is_credit, ledgit_sale_items(qty, ledgit_variants(variant_name))")
       .eq("user_id", session.user.id)
       .eq("is_credit", true)
       .order("created_at", { ascending: false });
@@ -45,7 +45,23 @@ export default function Khata() {
   };
 
   const sendWhatsApp = (row) => {
-    const msg = `Hi ${row.customer_name}, you have a pending payment of ₹${Number(row.final_total).toLocaleString()} from ${fmt(row.created_at)}. Please clear when convenient. Thank you! 🙏`;
+    const bizName = profile?.business_name || "our store";
+    const bizPhone = profile?.phone ? `\n📞 ${profile.phone}` : "";
+
+    // Build item list if available
+    const items = (row.ledgit_sale_items || [])
+      .map(i => `  • ${i.ledgit_variants?.variant_name || "Item"} x${i.qty}`)
+      .join("\n");
+    const itemSection = items ? `\n\n🛍️ Items:\n${items}` : "";
+
+    const msg = `Hi ${row.customer_name},
+
+This is a payment reminder from *${bizName}*.
+
+You have an outstanding payment of *₹${Number(row.final_total).toLocaleString()}* for your purchase on ${fmt(row.created_at)}.${itemSection}
+${row.note ? `\n📝 Note: ${row.note}` : ""}
+
+Kindly clear the dues at your earliest convenience. Thank you! 🙏${bizPhone}`;
 
     // Strip everything except digits
     let phone = (row.customer_phone || "").replace(/\D/g, "");
